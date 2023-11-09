@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
+import "hardhat/console.sol";
 
 import "./Auction.sol";
 
@@ -29,7 +30,8 @@ contract EnglishAuction is Auction {
 
     function bid() public payable{
         require(time() < lastBid + biddingPeriod, "Bidding period has ended");
-        if (highestBid==initialPrice)
+        
+        if (highestBidder==address(0))
             require(msg.value >= highestBid, "Bid value not high enough");
         else
             require(msg.value >= highestBid + minimumPriceIncrement, "Bid value not high enough");
