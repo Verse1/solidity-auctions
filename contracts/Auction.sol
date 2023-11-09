@@ -79,13 +79,19 @@ contract Auction {
     // Ensure that your withdrawal functionality is not vulnerable to
     // re-entrancy or unchecked-spend vulnerabilities.
     function withdraw() public {
-        require(withdrawable[msg.sender]>0, "No funds to withdraw");
-        uint amount = withdrawable[msg.sender];
-        
-        (bool success, ) = msg.sender.call{value: amount}("");
-        require(success, "Transfer failed.");
-        withdrawable[msg.sender] = 0;
+        uint tmp = withdrawable[msg.sender];
 
+        if(tmp > 0){
+            withdrawable[msg.sender] = 0;
+            balances[msg.sender] = 0;
+            (bool success, ) = msg.sender.call{value: tmp}("");
+            
+            if (!success) {
+                withdrawable[msg.sender] = tmp;
+                // balances[msg.sender] = tmp2;
+                revert("Transfer failed.");
+            }
+        }
     }
 
 }
