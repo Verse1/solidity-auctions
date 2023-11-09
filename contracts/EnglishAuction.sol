@@ -8,8 +8,9 @@ contract EnglishAuction is Auction {
     uint public initialPrice;
     uint public biddingPeriod;
     uint public minimumPriceIncrement;
-
-    // TODO: place your code here
+    uint public lastBid;
+    uint public highestBid;
+    address public highestBidder;
 
     // constructor
     constructor(address _sellerAddress,
@@ -22,21 +23,32 @@ contract EnglishAuction is Auction {
         initialPrice = _initialPrice;
         biddingPeriod = _biddingPeriod;
         minimumPriceIncrement = _minimumPriceIncrement;
-
-        // TODO: place your code here
-
+        lastBid = time();
+        highestBid = initialPrice;
     }
 
     function bid() public payable{
+        require(time() < lastBid + biddingPeriod, "Bidding period has ended");
+        if (highestBid==initialPrice)
+            require(msg.value >= highestBid, "Bid value not high enough");
+        else
+            require(msg.value >= highestBid + minimumPriceIncrement, "Bid value not high enough");
 
-        // TODO: place your code here
+        withdrawable[highestBidder] += highestBid;
+
+        highestBidder = msg.sender;
+        highestBid = msg.value;
+        lastBid = time();
 
     }
 
     // Need to override the default implementation
     function getWinner() public override view returns (address winner){
 
-        // TODO: place your code here
+        if (time() < lastBid + biddingPeriod)
+            return address(0);
+        else 
+            return highestBidder;
 
     }
 }
