@@ -8,8 +8,8 @@ contract Auction {
     address internal sellerAddress;
     address internal winnerAddress;
     uint winningPrice;
-
-    // TODO: place your code here
+    bool finalized;
+    mapping(address => uint) bids;
 
     // constructor
     constructor(address _sellerAddress,
@@ -23,6 +23,8 @@ contract Auction {
           sellerAddress = msg.sender;
         winnerAddress = _winnerAddress;
         winningPrice = _winningPrice;
+        finalized = false;
+        bids[winnerAddress] = winningPrice;
     }
 
     // This is used in testing.
