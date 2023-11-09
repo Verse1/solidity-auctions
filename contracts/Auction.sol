@@ -68,8 +68,7 @@ contract Auction {
         require(msg.sender == judgeAddress || msg.sender == sellerAddress, "Only judge or seller can refund");
         require(getWinner() != address(0), "Auction not complete");
         require(balances[winnerAddress]>=winningPrice, "Buyer does not have a refund");
-
-        balances[sellerAddress]-=winningPrice;
+        balances[winnerAddress]-=winningPrice;
         withdrawable[winnerAddress]+=winningPrice;
         finalized = true;
     }
