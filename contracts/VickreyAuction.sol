@@ -5,12 +5,18 @@ import "./Auction.sol";
 
 contract VickreyAuction is Auction {
 
+    struct Bid {
+        uint bid;
+        address bidder;
+    }
+
     uint public minimumPrice;
     uint public biddingDeadline;
     uint public revealDeadline;
     uint public bidDepositAmount;
     mapping(address => bytes32) public commitments;
-
+    Bid[] public bids;
+    
     // constructor
     constructor(address _sellerAddress,
                             address _judgeAddress,
@@ -51,21 +57,63 @@ contract VickreyAuction is Auction {
         require(sha256(abi.encodePacked(msg.value, nonce)) == commitments[msg.sender], "Bid does not match commitment");
 
         withdrawable[msg.sender] += bidDepositAmount;
+        bids.push(Bid(msg.value, msg.sender));
 
+    }
+
+    function getHighestBidder() private view returns (address, uint, uint) {
+        require(time() >= revealDeadline, "Reveal period has not ended");
+        require(bids.length > 0, "No bids have been made");
+        
+        uint highestBid = 0;
+        uint secondHighestBid = 0;
+        address highestBidder= address(0);
+
+        for(uint i = 0; i < bids.length; i++) {
+            if(bids[i].bid > highestBid) {
+                secondHighestBid = highestBid;
+                highestBid = bids[i].bid;
+                highestBidder = bids[i].bidder;
+            }
+            else if(bids[i].bid > secondHighestBid) {
+                secondHighestBid = bids[i].bid;
+            }
+        }
+        return (highestBidder, highestBid, secondHighestBid);
     }
 
     // Need to override the default implementation
     function getWinner() public override view returns (address winner){
 
-        // TODO: place your code here
+        (address highestBidder, uint highestBid, ) = getHighestBidder();
 
+        if(highestBid < minimumPrice) {
+            return address(0);
+        }
+        else {
+            return highestBidder;
+        }
+        
     }
 
     // finalize() must be extended here to provide a refund to the winner
     // based on the final sale price (the second highest bid, or reserve price).
     function finalize() public override {
+
+        (address highestBidder, , uint secondHighestBid ) = getHighestBidder();
+
+        if(highestBidder == address(0)) {
+            finalized = true;
+            return;
+        }
  
-        // TODO: place your code here
+        require(time()> revealDeadline, "Reveal period has not ended");
+        require(!finalized, "Auction has already been finalized");
+        require(secondHighestBid >= minimumPrice, "Reserve price has not been met");
+
+        winnerAddress = highestBidder;
+        winningPrice = secondHighestBid;
+
 
         // call the general finalize() logic
         super.finalize();
