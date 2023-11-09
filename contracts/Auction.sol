@@ -45,9 +45,12 @@ contract Auction {
     // If no judge is specified, anybody can call this.
     // If a judge is specified, then only the judge or winning bidder may call.
     function finalize() public virtual {
-
-        // TODO: place your code here
-
+        require(!finalized, "Auction already finalized");
+        require(getWinner() != address(0), "Auction not complete");
+        require(msg.sender == judgeAddress || msg.sender == winnerAddress, "Only judge or buyer can finalize");
+        finalized = true;
+        bids[winnerAddress]-=winningPrice;
+        bids[sellerAddress]+=winningPrice;
     }
 
     // This can ONLY be called by seller or the judge (if a judge exists).
