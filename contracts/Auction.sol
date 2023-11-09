@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
+import "hardhat/console.sol";
 
 contract Auction {
 
@@ -9,7 +10,8 @@ contract Auction {
     address internal winnerAddress;
     uint winningPrice;
     bool finalized;
-    mapping(address => uint) bids;
+    mapping(address => uint) balances;
+    mapping(address => uint) withdrawable;
 
     // constructor
     constructor(address _sellerAddress,
@@ -24,7 +26,11 @@ contract Auction {
         winnerAddress = _winnerAddress;
         winningPrice = _winningPrice;
         finalized = false;
-        bids[winnerAddress] = winningPrice;
+        balances[winnerAddress] = 0;
+        balances[sellerAddress] = 0;
+        withdrawable[winnerAddress] = 0;
+        withdrawable[sellerAddress] = 0;
+        balances[winnerAddress]+=winningPrice;
     }
 
     // This is used in testing.
@@ -47,18 +53,25 @@ contract Auction {
     function finalize() public virtual {
         require(!finalized, "Auction already finalized");
         require(getWinner() != address(0), "Auction not complete");
-        require(msg.sender == judgeAddress || msg.sender == winnerAddress, "Only judge or buyer can finalize");
+        if (judgeAddress != address(0)) {
+            require(msg.sender == judgeAddress || msg.sender == winnerAddress, "Only judge or winner can finalize");
+        }
         finalized = true;
-        bids[winnerAddress]-=winningPrice;
-        bids[sellerAddress]+=winningPrice;
+        balances[winnerAddress]-=winningPrice;
+        withdrawable[sellerAddress]+=winningPrice;
     }
 
     // This can ONLY be called by seller or the judge (if a judge exists).
     // Money should only be refunded to the winner.
     function refund() public {
+        require(!finalized, "Auction already finalized");
+        require(msg.sender == judgeAddress || msg.sender == sellerAddress, "Only judge or seller can refund");
+        require(getWinner() != address(0), "Auction not complete");
+        require(balances[winnerAddress]>=winningPrice, "Buyer does not have a refund");
 
-        // TODO: place your code here
-
+        balances[sellerAddress]-=winningPrice;
+        withdrawable[winnerAddress]+=winningPrice;
+        finalized = true;
     }
 
     // Withdraw funds from the contract.
@@ -67,8 +80,12 @@ contract Auction {
     // Ensure that your withdrawal functionality is not vulnerable to
     // re-entrancy or unchecked-spend vulnerabilities.
     function withdraw() public {
-
-        //TODO: place your code here
+        require(withdrawable[msg.sender]>0, "No funds to withdraw");
+        uint amount = withdrawable[msg.sender];
+        
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, "Transfer failed.");
+        withdrawable[msg.sender] = 0;
 
     }
 
