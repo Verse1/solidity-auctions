@@ -34,9 +34,20 @@ contract DutchAuction is Auction {
 
     function bid() public payable{
 
+        uint price = getPrice();
         require(time()<startTime+biddingPeriod, "Bidding period has ended");
-        require(msg.value>=getPrice(), "Bid value is invalid");
+        require(msg.value>=price, "Bid value not high enough");
+        require(msg.sender!=sellerAddress, "Seller cannot bid");
+        require(msg.sender!=judgeAddress, "Judge cannot bid");
+        require(!finalized, "Auction already finalized");
 
+        if (msg.value>price) {
+            withdrawable[msg.sender]+=msg.value-price;
+        }
+
+        winnerAddress = msg.sender;
+        winningPrice = msg.value;
+        finalized = true;
     }
 
 }
