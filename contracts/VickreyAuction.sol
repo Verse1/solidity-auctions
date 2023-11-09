@@ -9,8 +9,7 @@ contract VickreyAuction is Auction {
     uint public biddingDeadline;
     uint public revealDeadline;
     uint public bidDepositAmount;
-
-    // TODO: place your code here
+    mapping(address => bytes32) public commitments;
 
     // constructor
     constructor(address _sellerAddress,
@@ -25,8 +24,6 @@ contract VickreyAuction is Auction {
         bidDepositAmount = _bidDepositAmount;
         biddingDeadline = time() + _biddingPeriod;
         revealDeadline = time() + _biddingPeriod + _revealPeriod;
-
-        // TODO: place your code here
     }
 
     // Record the player's bid commitment
@@ -34,16 +31,26 @@ contract VickreyAuction is Auction {
     // Bidders can update their previous bid for free if desired.
     // Only allow commitments before biddingDeadline
     function commitBid(bytes32 bidCommitment) public payable {
+        require(time() < biddingDeadline, "Bidding period has ended");
+        if(commitments[msg.sender] == 0) {
+            require(msg.value == bidDepositAmount, "Bid deposit amount is incorrect");
+        }
+        else {
+            require(msg.value == 0, "Bid deposit amount is incorrect");
+        }
 
-        // TODO: place your code here
+        commitments[msg.sender] = bidCommitment;
 
     }
 
     // Check that the bid (msg.value) matches the commitment.
     // If the bid is correctly opened, the bidder can withdraw their deposit.
     function revealBid(uint nonce) public payable{
+        require(time() >= biddingDeadline, "Bidding period has not ended");
+        require(time() < revealDeadline, "Reveal period has ended");
+        require(sha256(abi.encodePacked(msg.value, nonce)) == commitments[msg.sender], "Bid does not match commitment");
 
-        // TODO: place your code here
+        withdrawable[msg.sender] += bidDepositAmount;
 
     }
 
