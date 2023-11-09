@@ -54,7 +54,7 @@ contract VickreyAuction is Auction {
     function revealBid(uint nonce) public payable{
         require(time() >= biddingDeadline, "Bidding period has not ended");
         require(time() < revealDeadline, "Reveal period has ended");
-        require(sha256(abi.encodePacked(msg.value, nonce)) == commitments[msg.sender], "Bid does not match commitment");
+        require(keccak256(abi.encodePacked(msg.value, nonce)) == commitments[msg.sender], "Bid does not match commitment");
 
         withdrawable[msg.sender] += bidDepositAmount;
         bids.push(Bid(msg.value, msg.sender));
