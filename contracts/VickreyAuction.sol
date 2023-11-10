@@ -44,9 +44,7 @@ contract VickreyAuction is Auction {
         else {
             require(msg.value == 0, "Bid deposit amount is incorrect");
         }
-
         commitments[msg.sender] = bidCommitment;
-
     }
 
     // Check that the bid (msg.value) matches the commitment.
@@ -55,6 +53,8 @@ contract VickreyAuction is Auction {
         require(time() >= biddingDeadline, "Bidding period has not ended");
         require(time() < revealDeadline, "Reveal period has ended");
         require(keccak256(abi.encodePacked(msg.value, nonce)) == commitments[msg.sender], "Bid does not match commitment");
+        require(msg.sender == tx.origin, "Only the bidder can withdraw their deposit");
+        commitments[msg.sender] = 0;
 
         withdrawable[msg.sender] += bidDepositAmount;
         bids.push(Bid(msg.value, msg.sender));
@@ -79,6 +79,9 @@ contract VickreyAuction is Auction {
                 secondHighestBid = bids[i].bid;
             }
         }
+        if(secondHighestBid == 0) {
+            secondHighestBid = minimumPrice;
+        }
         return (highestBidder, highestBid, secondHighestBid);
     }
 
@@ -96,23 +99,28 @@ contract VickreyAuction is Auction {
         
     }
 
+    function refundLosers(address winner) private{
+        for(uint i = 0; i < bids.length; i++) {
+            if(bids[i].bidder !=winner) {
+                withdrawable[bids[i].bidder] += bids[i].bid;
+            }
+        }
+    }
+
     // finalize() must be extended here to provide a refund to the winner
     // based on the final sale price (the second highest bid, or reserve price).
     function finalize() public override {
 
-        (address highestBidder, , uint secondHighestBid ) = getHighestBidder();
+        (address highestBidder, uint highestBid, uint secondHighestBid ) = getHighestBidder();
 
-        if(highestBidder == address(0)) {
-            finalized = true;
-            return;
-        }
- 
         require(time()> revealDeadline, "Reveal period has not ended");
-        require(!finalized, "Auction has already been finalized");
-        require(secondHighestBid >= minimumPrice, "Reserve price has not been met");
+        require(highestBid >= minimumPrice, "Reserve price has not been met");
 
         winnerAddress = highestBidder;
         winningPrice = secondHighestBid;
+        balances[winnerAddress] += winningPrice;
+        withdrawable[winnerAddress] += highestBid - secondHighestBid;
+        refundLosers(winnerAddress);
 
 
         // call the general finalize() logic
